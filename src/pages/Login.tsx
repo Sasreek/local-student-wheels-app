@@ -19,17 +19,20 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user } = useAuth();
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
 
+  useEffect(() => {
+    if (user) navigate('/dashboard');
+  }, [user, navigate]);
+
   const onSubmit = async (data: LoginFormValues) => {
     try {
       await login(data.email, data.password);
-      navigate('/dashboard');
     } catch (error) {
-      // Error is already handled in auth service
+      // Toast already shown
       console.error('Login failed:', error);
     }
   };

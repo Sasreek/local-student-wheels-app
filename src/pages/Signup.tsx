@@ -26,17 +26,20 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
-  const { signup, isLoading } = useAuth();
+  const { signup, isLoading, user } = useAuth();
   const { register, handleSubmit, formState: { errors } } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
   });
 
+  useEffect(() => {
+    if (user) navigate('/dashboard');
+  }, [user, navigate]);
+
   const onSubmit = async (data: SignupFormValues) => {
     try {
       await signup(data.email, data.name, data.password);
-      navigate('/dashboard');
     } catch (error) {
-      // Error is already handled in auth service
+      // Toast already shown
       console.error('Signup failed:', error);
     }
   };

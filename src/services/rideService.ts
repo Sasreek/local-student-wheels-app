@@ -1,124 +1,115 @@
 
 import { useState } from 'react';
-import { Ride, Booking } from '../types/models';
-import { activeRides, pastRides, allRides, bookings as mockBookings } from './mockData';
-import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
-interface RideFilters {
-  date?: Date;
-  origin?: string;
-  destination?: string;
-}
+// Database ride and booking mapping
+const mapDbRide = (db: any) => ({
+  id: db.id,
+  hostId: db['driver id'],
+  hostName: '', // Not available unless profiles are implemented
+  hostProfilePicture: '', // Not available unless profiles are implemented
+  origin: db['from'] || db.origin || db['origin'] || '',
+  destination: db.to || '',
+  dateTime: db.date || db.time || '',
+  availableSeats: db.seats || 0,
+  totalSeats: db.seats || 0,
+  price: undefined, // Add mapping if price column exists
+  notes: '', // Add mapping if notes column exists
+  status: db.status || 'active',
+});
+
+const mapDbBooking = (db: any) => ({
+  id: db.id,
+  userId: db.userId,
+  rideId: db.rideId,
+  bookingTime: db.created_at || '',
+  seats: db.numPassengers || 1,
+  status: db.status || 'confirmed',
+});
 
 export const useRideService = () => {
-  const [rides, setRides] = useState<Ride[]>(allRides);
-  const [bookings, setBookings] = useState<Booking[]>(mockBookings);
+  // No need for local mock state anymore
   const [isLoading, setIsLoading] = useState(false);
 
-  // Get all available rides
-  const getAvailableRides = async (filters?: RideFilters): Promise<Ride[]> => {
+  // Get all available rides (from rides table)
+  const getAvailableRides = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      let filteredRides = [...activeRides];
-      
-      // Apply filters if provided
-      if (filters) {
-        if (filters.date) {
-          const dateStr = format(filters.date, 'yyyy-MM-dd');
-          filteredRides = filteredRides.filter(ride => 
-            ride.dateTime.startsWith(dateStr)
-          );
-        }
-        
-        if (filters.origin) {
-          const origin = filters.origin.toLowerCase();
-          filteredRides = filteredRides.filter(ride => 
-            ride.origin.toLowerCase().includes(origin)
-          );
-        }
-        
-        if (filters.destination) {
-          const destination = filters.destination.toLowerCase();
-          filteredRides = filteredRides.filter(ride => 
-            ride.destination.toLowerCase().includes(destination)
-          );
-        }
-      }
-      
-      return filteredRides;
+      const { data, error } = await supabase.from('rides').select('*');
+      if (error) throw error;
+      // Map fields
+      return (data || []).map(mapDbRide);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Get ride by ID
-  const getRideById = async (id: string): Promise<Ride | undefined> => {
+  // Get one ride by ID
+  const getRideById = async (id: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return rides.find(ride => ride.id === id);
+      const { data, error } = await supabase.from('rides').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return undefined;
+      return mapDbRide(data);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Get user's hosted rides
-  const getUserHostedRides = async (userId: string): Promise<Ride[]> => {
+  // Get user's hosted rides (rides.driver id = user.id)
+  const getUserHostedRides = async (userId: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      return rides.filter(ride => ride.hostId === userId);
+      const { data, error } = await supabase.from('rides').select('*').eq('driver id', userId);
+      if (error) throw error;
+      return (data || []).map(mapDbRide);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Get user's booked rides
-  const getUserBookedRides = async (userId: string): Promise<Ride[]> => {
+  // Get user's bookings, and the rides for them
+  const getUserBookedRides = async (userId: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Get all booking IDs for this user
-      const userBookingIds = bookings
-        .filter(booking => booking.userId === userId && booking.status === 'confirmed')
-        .map(booking => booking.rideId);
-      
-      // Return all rides that match those IDs
-      return rides.filter(ride => userBookingIds.includes(ride.id));
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('userId', userId)
+        .eq('status', 'confirmed');
+      if (bookingsError) throw bookingsError;
+      const rideIds = (bookingsData || []).map((b: any) => b.rideId);
+      if (rideIds.length === 0) return [];
+
+      const { data: ridesData, error: ridesError } = await supabase
+        .from('rides')
+        .select('*')
+        .in('id', rideIds);
+      if (ridesError) throw ridesError;
+
+      return (ridesData || []).map(mapDbRide);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Create a new ride
-  const createRide = async (rideData: Omit<Ride, 'id' | 'status'>): Promise<Ride> => {
+  // Create a new ride (host ride)
+  const createRide = async (rideData: any) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Create a new ride with a random ID
-      const newRide: Ride = {
-        ...rideData,
-        id: `ride${rides.length + 1}`,
-        status: 'active',
+      const rideToInsert = {
+        'driver id': rideData.hostId,
+        seats: rideData.totalSeats,
+        to: rideData.destination,
+        // Add from, time, notes if schema allows (not all fields available in DB)
       };
-      
-      // Update state
-      setRides(prevRides => [...prevRides, newRide]);
-      
+      const { data, error } = await supabase.from('rides').insert([rideToInsert]).select().single();
+      if (error) throw error;
       toast.success('Ride created successfully!');
-      return newRide;
-    } catch (error) {
-      toast.error('Failed to create ride');
+      return mapDbRide(data);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create ride');
       throw error;
     } finally {
       setIsLoading(false);
@@ -126,119 +117,36 @@ export const useRideService = () => {
   };
 
   // Book a ride
-  const bookRide = async (userId: string, rideId: string, seats: number): Promise<Booking> => {
+  const bookRide = async (userId: string, rideId: string, seats: number) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Find the ride
-      const rideIndex = rides.findIndex(ride => ride.id === rideId);
-      if (rideIndex === -1) {
-        throw new Error('Ride not found');
-      }
-      
-      const ride = rides[rideIndex];
-      
-      // Check if enough seats are available
-      if (ride.availableSeats < seats) {
-        throw new Error('Not enough seats available');
-      }
-      
-      // Update the ride with reduced seats
-      const updatedRide = {
-        ...ride,
-        availableSeats: ride.availableSeats - seats,
-      };
-      
-      // Create a new booking
-      const newBooking: Booking = {
-        id: `booking${bookings.length + 1}`,
-        userId,
+      const { data, error } = await supabase.from('bookings').insert([{
+        userId, // Make sure bookings table has this column!
         rideId,
-        bookingTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        seats,
+        numPassengers: seats,
         status: 'confirmed',
-      };
-      
-      // Update state
-      setRides(prevRides => {
-        const newRides = [...prevRides];
-        newRides[rideIndex] = updatedRide;
-        return newRides;
-      });
-      
-      setBookings(prevBookings => [...prevBookings, newBooking]);
-      
+        // created_at will be set by default if exists
+      }]);
+      if (error) throw error;
       toast.success('Ride booked successfully!');
-      return newBooking;
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('Failed to book ride');
-      }
+      return data;
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to book ride');
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Cancel a booking
-  const cancelBooking = async (bookingId: string): Promise<void> => {
+  // Cancel a booking (by id)
+  const cancelBooking = async (bookingId: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Find the booking
-      const bookingIndex = bookings.findIndex(booking => booking.id === bookingId);
-      if (bookingIndex === -1) {
-        throw new Error('Booking not found');
-      }
-      
-      const booking = bookings[bookingIndex];
-      
-      // Find the ride
-      const rideIndex = rides.findIndex(ride => ride.id === booking.rideId);
-      if (rideIndex === -1) {
-        throw new Error('Ride not found');
-      }
-      
-      const ride = rides[rideIndex];
-      
-      // Update the ride with restored seats
-      const updatedRide = {
-        ...ride,
-        availableSeats: ride.availableSeats + booking.seats,
-      };
-      
-      // Update the booking status
-      const updatedBooking = {
-        ...booking,
-        status: 'cancelled' as const,
-      };
-      
-      // Update state
-      setRides(prevRides => {
-        const newRides = [...prevRides];
-        newRides[rideIndex] = updatedRide;
-        return newRides;
-      });
-      
-      setBookings(prevBookings => {
-        const newBookings = [...prevBookings];
-        newBookings[bookingIndex] = updatedBooking;
-        return newBookings;
-      });
-      
+      const { error } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+      if (error) throw error;
       toast.success('Booking cancelled successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('Failed to cancel booking');
-      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to cancel booking');
       throw error;
     } finally {
       setIsLoading(false);
@@ -246,8 +154,6 @@ export const useRideService = () => {
   };
 
   return {
-    rides,
-    bookings,
     isLoading,
     getAvailableRides,
     getRideById,

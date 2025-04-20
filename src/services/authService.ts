@@ -1,121 +1,77 @@
 
 import { useState, useEffect } from 'react';
-import { currentUser } from './mockData';
-import { User } from '../types/models';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
-// Mock authentication service
+// Hook return type
 interface AuthState {
-  user: User | null;
+  user: any;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, name: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
-// Simple mock function to validate email
-const isValidCollegeEmail = (email: string): boolean => {
-  // Check if email ends with .edu
-  return email.endsWith('.edu');
-};
-
 export const useAuth = (): AuthState => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Check if user is stored in localStorage on component mount
+  // Attach listener for auth state changes and init user from session
   useEffect(() => {
-    const storedUser = localStorage.getItem('goLocalUser');
-    
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    
-    setIsLoading(false);
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
+  // Login with Supabase
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
-    
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock validation
-      if (!email || !password) {
-        throw new Error('Email and password are required');
-      }
-      
-      if (!isValidCollegeEmail(email)) {
-        throw new Error('Please use a valid college email (.edu)');
-      }
-      
-      // In a real app, we would validate credentials against a backend
-      // For demo purposes, we'll just use our mock current user
-      const userData = currentUser;
-      
-      // Store user in state and localStorage
-      setUser(userData);
-      localStorage.setItem('goLocalUser', JSON.stringify(userData));
-      
-      toast.success('Successfully logged in!');
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('An unknown error occurred');
-      }
-      throw error;
-    } finally {
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      toast.error(error.message);
       setIsLoading(false);
+      throw error;
     }
+    toast.success('Successfully logged in!');
+    setUser(data.user);
+    setIsLoading(false);
   };
 
+  // Signup with Supabase
   const signup = async (email: string, name: string, password: string): Promise<void> => {
     setIsLoading(true);
-    
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock validation
-      if (!email || !name || !password) {
-        throw new Error('All fields are required');
-      }
-      
-      if (!isValidCollegeEmail(email)) {
-        throw new Error('Please use a valid college email (.edu)');
-      }
-      
-      if (password.length < 6) {
-        throw new Error('Password must be at least 6 characters');
-      }
-      
-      // In a real app, we would create a new user in the backend
-      // For demo purposes, we'll just use our mock current user
-      const userData = { ...currentUser, email, name };
-      
-      // Store user in state and localStorage
-      setUser(userData);
-      localStorage.setItem('goLocalUser', JSON.stringify(userData));
-      
-      toast.success('Account created successfully!');
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error('An unknown error occurred');
-      }
-      throw error;
-    } finally {
+    // Metadata for user profile (if needed)
+    const { error, data } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+      },
+    });
+    if (error) {
+      toast.error(error.message);
       setIsLoading(false);
+      throw error;
     }
+    toast.success('Account created successfully! Please check your email to confirm.');
+    setUser(data.user);
+    setIsLoading(false);
   };
 
-  const logout = (): void => {
-    // Clear user from state and localStorage
+  // Logout with Supabase
+  const logout = async (): Promise<void> => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('goLocalUser');
     toast.info('You have been logged out');
   };
 
