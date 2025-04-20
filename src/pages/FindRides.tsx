@@ -56,11 +56,18 @@ const FindRides: React.FC = () => {
   const handleSearch = async () => {
     try {
       setIsLoading(true);
-      const filteredRides = await getAvailableRides({
-        date,
-        origin: origin.trim() || undefined,
-        destination: destination.trim() || undefined,
+      // Call getAvailableRides without parameters and filter client-side
+      const allRides = await getAvailableRides();
+      
+      // Filter rides based on the search criteria
+      const filteredRides = allRides.filter(ride => {
+        const matchesDate = !date || (ride.dateTime && new Date(ride.dateTime).toDateString() === date.toDateString());
+        const matchesOrigin = !origin.trim() || ride.origin.toLowerCase().includes(origin.toLowerCase());
+        const matchesDestination = !destination.trim() || ride.destination.toLowerCase().includes(destination.toLowerCase());
+        
+        return matchesDate && matchesOrigin && matchesDestination;
       });
+      
       setRides(filteredRides);
     } catch (error) {
       console.error('Error searching rides:', error);
