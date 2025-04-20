@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
@@ -28,7 +29,7 @@ const mapDbBooking = (db: any) => ({
   status: db.status || 'confirmed',
 });
 
-// Redefine CreateRideInput with simple, direct types to avoid deep instantiation
+// Define the input type for createRide explicitly to avoid deep type instantiation
 interface CreateRideInput {
   hostId: string;
   hostName: string;
@@ -42,11 +43,23 @@ interface CreateRideInput {
   notes?: string;
 }
 
-export const useRideService = () => {
+// Define return types for each function to avoid TypeScript depth errors
+interface RideService {
+  isLoading: boolean;
+  getAvailableRides: () => Promise<Ride[]>;
+  getRideById: (id: string) => Promise<Ride | undefined>;
+  getUserHostedRides: (userId: string) => Promise<Ride[]>;
+  getUserBookedRides: (userId: string) => Promise<Ride[]>;
+  createRide: (rideData: CreateRideInput) => Promise<Ride>;
+  bookRide: (userId: string, rideId: string, seats: number) => Promise<any>;
+  cancelBooking: (bookingId: string) => Promise<void>;
+}
+
+export const useRideService = (): RideService => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Get all available rides (from rides table)
-  const getAvailableRides = async () => {
+  const getAvailableRides = async (): Promise<Ride[]> => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -60,7 +73,7 @@ export const useRideService = () => {
   };
 
   // Get one ride by ID
-  const getRideById = async (id: string) => {
+  const getRideById = async (id: string): Promise<Ride | undefined> => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -76,7 +89,7 @@ export const useRideService = () => {
   };
 
   // Get user's hosted rides (rides.driver id = user.id)
-  const getUserHostedRides = async (userId: string) => {
+  const getUserHostedRides = async (userId: string): Promise<Ride[]> => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -91,7 +104,7 @@ export const useRideService = () => {
   };
 
   // Get user's bookings, and the rides for them
-  const getUserBookedRides = async (userId: string) => {
+  const getUserBookedRides = async (userId: string): Promise<Ride[]> => {
     setIsLoading(true);
     try {
       const { data: bookingsData, error: bookingsError } = await supabase
@@ -116,7 +129,7 @@ export const useRideService = () => {
   };
 
   // Create a new ride (host ride)
-  const createRide = async (rideData: CreateRideInput) => {
+  const createRide = async (rideData: CreateRideInput): Promise<Ride> => {
     setIsLoading(true);
 
     try {
@@ -172,7 +185,7 @@ export const useRideService = () => {
   };
 
   // Cancel a booking (by id)
-  const cancelBooking = async (bookingId: string) => {
+  const cancelBooking = async (bookingId: string): Promise<void> => {
     setIsLoading(true);
     try {
       const { error } = await supabase
