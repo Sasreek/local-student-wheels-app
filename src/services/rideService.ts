@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
@@ -29,7 +28,7 @@ const mapDbBooking = (db: any) => ({
   status: db.status || 'confirmed',
 });
 
-// Define the input type for createRide explicitly to avoid deep type instantiation
+// Redefine CreateRideInput with simple, direct types to avoid deep instantiation
 interface CreateRideInput {
   hostId: string;
   hostName: string;
@@ -131,6 +130,9 @@ export const useRideService = () => {
         notes: rideData.notes,
         status: 'active',
       };
+
+      // DEBUG: Output the ride data to ensure "driver id" is the user's id
+      console.log('[createRide] rideToInsert:', rideToInsert);
 
       const { data, error } = await supabase
         .from('rides')
