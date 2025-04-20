@@ -29,6 +29,20 @@ const mapDbBooking = (db: any) => ({
   status: db.status || 'confirmed',
 });
 
+// Define the input type for createRide directly to avoid deep type instantiation
+interface CreateRideInput {
+  hostId: string;
+  hostName: string;
+  hostProfilePicture?: string;
+  origin: string;
+  destination: string;
+  dateTime: string;
+  availableSeats: number;
+  totalSeats: number;
+  price?: number;
+  notes?: string;
+}
+
 export const useRideService = () => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -103,18 +117,7 @@ export const useRideService = () => {
   };
 
   // Create a new ride (host ride)
-  const createRide = async (rideData: {
-    hostId: string;
-    hostName: string;
-    hostProfilePicture?: string;
-    origin: string;
-    destination: string;
-    dateTime: string;
-    availableSeats: number;
-    totalSeats: number;
-    price?: number;
-    notes?: string;
-  }) => {
+  const createRide = async (rideData: CreateRideInput) => {
     setIsLoading(true);
 
     try {
