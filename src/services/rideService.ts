@@ -96,7 +96,18 @@ export const useRideService = () => {
   };
 
   // Create a new ride (host ride)
-  const createRide = async (rideData: Omit<Ride, 'id' | 'status'>) => {
+  const createRide = async (rideData: {
+    hostId: string;
+    hostName: string;
+    hostProfilePicture?: string;
+    origin: string;
+    destination: string;
+    dateTime: string;
+    availableSeats: number;
+    totalSeats: number;
+    price?: number;
+    notes?: string;
+  }) => {
     setIsLoading(true);
     try {
       const rideToInsert = {
