@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -20,7 +19,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/services/authService';
 import { useRideService } from '@/services/rideService';
 import { Ride } from '@/types/models';
@@ -38,7 +37,6 @@ import {
 const RideDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const toast = useToast;
   const { user } = useAuth();
   const { getRideById, bookRide, isLoading: serviceLoading } = useRideService();
   
@@ -58,7 +56,7 @@ const RideDetails: React.FC = () => {
         const rideData = await getRideById(id);
         
         if (!rideData) {
-          toast.error('Ride not found');
+          toast("Ride not found");
           navigate('/find-rides');
           return;
         }
@@ -66,14 +64,14 @@ const RideDetails: React.FC = () => {
         setRide(rideData);
       } catch (error) {
         console.error('Error fetching ride details:', error);
-        toast.error('Failed to load ride details');
+        toast("Failed to load ride details");
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchRideDetails();
-  }, [id, getRideById, navigate, toast]);
+  }, [id, getRideById, navigate]);
   
   // Handle booking
   const handleBookRide = async () => {
