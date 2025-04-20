@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
+import { Ride } from '@/types/models';
 
 // Database ride and booking mapping
-const mapDbRide = (db: any) => ({
+const mapDbRide = (db: any): Ride => ({
   id: db.id,
   hostId: db['driver id'],
   hostName: '', // Not available unless profiles are implemented
@@ -95,7 +96,7 @@ export const useRideService = () => {
   };
 
   // Create a new ride (host ride)
-  const createRide = async (rideData: any) => {
+  const createRide = async (rideData: Omit<Ride, 'id' | 'status'>) => {
     setIsLoading(true);
     try {
       const rideToInsert = {
