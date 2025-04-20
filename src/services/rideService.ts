@@ -29,7 +29,7 @@ const mapDbBooking = (db: any) => ({
   status: db.status || 'confirmed',
 });
 
-// Define the input type for createRide directly to avoid deep type instantiation
+// Define the input type for createRide explicitly to avoid deep type instantiation
 interface CreateRideInput {
   hostId: string;
   hostName: string;

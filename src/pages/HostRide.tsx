@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -94,6 +93,7 @@ const HostRide: React.FC = () => {
       
       <Card className="max-w-2xl mx-auto">
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
+          
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="origin">Pickup Location</Label>
@@ -214,7 +214,7 @@ const HostRide: React.FC = () => {
             />
             {errors.notes && (
               <p className="text-sm text-red-500">{errors.notes.message}</p>
-            )}
+              )}
           </div>
           
           <div className="flex justify-end gap-3">
