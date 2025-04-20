@@ -10,13 +10,13 @@ const mapDbRide = (db: any): Ride => ({
   hostId: db['driver id'],
   hostName: '', // Not available unless profiles are implemented
   hostProfilePicture: '', // Not available unless profiles are implemented
-  origin: db['from'] || db.origin || db['origin'] || '',
+  origin: db.origin || db['from'] || '',
   destination: db.to || '',
-  dateTime: db.date || db.time || '',
+  dateTime: db.date_time || db.date || db.time || '',
   availableSeats: db.seats || 0,
   totalSeats: db.seats || 0,
-  price: undefined, // Add mapping if price column exists
-  notes: '', // Add mapping if notes column exists
+  price: db.price !== undefined && db.price !== null ? Number(db.price) : undefined,
+  notes: db.notes || '',
   status: db.status || 'active',
 });
 
@@ -30,16 +30,16 @@ const mapDbBooking = (db: any) => ({
 });
 
 export const useRideService = () => {
-  // No need for local mock state anymore
   const [isLoading, setIsLoading] = useState(false);
 
   // Get all available rides (from rides table)
   const getAvailableRides = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('rides').select('*');
+      const { data, error } = await supabase
+        .from('rides')
+        .select('*');
       if (error) throw error;
-      // Map fields
       return (data || []).map(mapDbRide);
     } finally {
       setIsLoading(false);
@@ -50,7 +50,11 @@ export const useRideService = () => {
   const getRideById = async (id: string) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('rides').select('*').eq('id', id).maybeSingle();
+      const { data, error } = await supabase
+        .from('rides')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
       if (error || !data) return undefined;
       return mapDbRide(data);
     } finally {
@@ -62,7 +66,10 @@ export const useRideService = () => {
   const getUserHostedRides = async (userId: string) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('rides').select('*').eq('driver id', userId);
+      const { data, error } = await supabase
+        .from('rides')
+        .select('*')
+        .eq('driver id', userId);
       if (error) throw error;
       return (data || []).map(mapDbRide);
     } finally {
@@ -109,14 +116,24 @@ export const useRideService = () => {
     notes?: string;
   }) => {
     setIsLoading(true);
+
     try {
       const rideToInsert = {
-        'driver id': rideData.hostId,
-        seats: rideData.totalSeats,
+        "driver id": rideData.hostId,
+        origin: rideData.origin,
         to: rideData.destination,
-        // Add from, time, notes if schema allows (not all fields available in DB)
+        date_time: rideData.dateTime,
+        seats: rideData.totalSeats,
+        price: rideData.price,
+        notes: rideData.notes,
+        status: 'active',
       };
-      const { data, error } = await supabase.from('rides').insert([rideToInsert]).select().single();
+
+      const { data, error } = await supabase
+        .from('rides')
+        .insert([rideToInsert])
+        .select()
+        .single();
       if (error) throw error;
       toast.success('Ride created successfully!');
       return mapDbRide(data);
@@ -133,11 +150,10 @@ export const useRideService = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.from('bookings').insert([{
-        userId, // Make sure bookings table has this column!
+        userId,
         rideId,
         numPassengers: seats,
         status: 'confirmed',
-        // created_at will be set by default if exists
       }]);
       if (error) throw error;
       toast.success('Ride booked successfully!');
@@ -154,7 +170,10 @@ export const useRideService = () => {
   const cancelBooking = async (bookingId: string) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', bookingId);
       if (error) throw error;
       toast.success('Booking cancelled successfully');
     } catch (error: any) {

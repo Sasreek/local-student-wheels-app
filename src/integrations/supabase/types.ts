@@ -56,28 +56,43 @@ export type Database = {
       }
       rides: {
         Row: {
-          "driver id": string | null
+          date_time: string | null
+          "driver id": string
           "driver rating": number | null
           id: string
+          notes: string | null
+          origin: string | null
+          price: number | null
           seats: number
+          status: string | null
           time: string | null
           to: string
           "updated at": string | null
         }
         Insert: {
-          "driver id"?: string | null
+          date_time?: string | null
+          "driver id"?: string
           "driver rating"?: number | null
           id?: string
+          notes?: string | null
+          origin?: string | null
+          price?: number | null
           seats: number
+          status?: string | null
           time?: string | null
           to: string
           "updated at"?: string | null
         }
         Update: {
-          "driver id"?: string | null
+          date_time?: string | null
+          "driver id"?: string
           "driver rating"?: number | null
           id?: string
+          notes?: string | null
+          origin?: string | null
+          price?: number | null
           seats?: number
+          status?: string | null
           time?: string | null
           to?: string
           "updated at"?: string | null
